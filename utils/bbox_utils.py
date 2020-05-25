@@ -68,7 +68,10 @@ def weighted_suppression(scores, bboxes_and_landmarks, max_total_size=50, score_
     _, _, _, _, weighted_data = tf.while_loop(cond, weighted_suppression_body,
                                           [counter, iou_threshold, sorted_scores, sorted_bboxes_and_landmarks, weighted_data])
     #
-    return weighted_data[1:]
+    weighted_data = weighted_data[1:]
+    pad_size = max_total_size - weighted_data.shape[0]
+    weighted_data = tf.pad(weighted_data, ((0, pad_size),(0, 0)))
+    return weighted_data
 
 def non_max_suppression(pred_bboxes, pred_labels, **kwargs):
     """Applying non maximum suppression.
