@@ -279,6 +279,18 @@ def convert_xywh_to_bboxes(xywh):
     bboxes = tf.stack([y1, x1, y2, x2], axis=-1)
     return tf.clip_by_value(bboxes, 0, 1)
 
+def renormalize_bboxes_with_min_max(bboxes, min_max):
+    """Renormalizing given bounding boxes to the new boundaries.
+    r = (x - min) / (max - min)
+    outputs:
+        bboxes = (total_bboxes, [y1, x1, y2, x2])
+        min_max = ([y_min, x_min, y_max, x_max])
+    """
+    y_min, x_min, y_max, x_max = tf.split(min_max, 4)
+    renomalized_bboxes = bboxes - tf.concat([y_min, x_min, y_min, x_min], -1)
+    renomalized_bboxes /= tf.concat([y_max-y_min, x_max-x_min, y_max-y_min, x_max-x_min], -1)
+    return tf.clip_by_value(renomalized_bboxes, 0, 1)
+
 def normalize_bboxes(bboxes, height, width):
     """Normalizing bounding boxes.
     inputs:

@@ -9,22 +9,25 @@ if args.handle_gpu:
 batch_size = 1
 use_custom_images = True
 custom_image_path = "data/images/"
-#
 hyper_params = train_utils.get_hyper_params()
-#
 img_size = hyper_params["img_size"]
 
+data_types = data_utils.get_data_types()
+data_shapes = data_utils.get_data_shapes()
+padding_values = data_utils.get_padding_values()
+
 if use_custom_images:
-    test_data = data_utils.get_image_data_from_folder(custom_image_path, img_size, img_size)
+    img_paths = data_utils.get_custom_imgs(custom_image_path)
+    total_items = len(img_paths)
+    test_data = tf.data.Dataset.from_generator(lambda: data_utils.custom_data_generator(
+                                               img_paths, img_size, img_size), data_types, data_shapes)
 else:
     files = data_utils.get_files_from_folder("data/modified")
-    dataset_types = data_utils.get_dataset_types()
-    dataset_shapes = data_utils.get_dataset_shapes()
     test_data = tf.data.Dataset.from_generator(lambda: data_utils.dataset_generator(files),
-                                                dataset_types, dataset_shapes)
+                                                data_types, data_shapes)
     test_data = test_data.map(lambda a,b,c : data_utils.preprocessing((a,b,c), img_size, img_size))
-    padding_values = data_utils.get_batch_paddings()
-    test_data = test_data.padded_batch(batch_size, padded_shapes=dataset_shapes, padding_values=padding_values)
+#
+test_data = test_data.padded_batch(batch_size, padded_shapes=data_shapes, padding_values=padding_values)
 
 model = blazeface.get_model(hyper_params)
 model_path = io_utils.get_model_path()

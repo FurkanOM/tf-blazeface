@@ -130,7 +130,8 @@ def generate_bboxes_from_landmarks(landmarks):
     y1 = tf.reduce_min(landmarks[..., 1], -1) - padding
     y2 = tf.reduce_max(landmarks[..., 1], -1) + padding
     #
-    return tf.stack([y1, x1, y2, x2], -1)
+    gt_boxes = tf.stack([y1, x1, y2, x2], -1)
+    return tf.clip_by_value(gt_boxes, 0, 1)
 
 def preprocessing(image_data, final_height, final_width, augmentation_fn=None):
     """Image resizing operation handled before batch operations.
@@ -190,47 +191,53 @@ def get_labels(info):
     """
     return info.features["labels"].names
 
-def get_image_data_from_folder(custom_image_path, final_height, final_width):
-    """Generating image data like tensorflow dataset format for a given image path.
-    This method could be used for custom image predictions.
+def get_custom_imgs(custom_image_path):
+    """Generating a list of images for given path.
     inputs:
         custom_image_path = folder of the custom images
-        final_height = final image height after resizing
-        final_width = final image width after resizing
-
     outputs:
-        image_data = (img, dummy_gt_boxes, dummy_gt_landmarks)
-            img = (1, final_height, final_width, depth)
-            dummy_gt_boxes = None
-            dummy_gt_landmarks = None
+        custom image list = [path1, path2]
     """
-    image_data = []
+    img_paths = []
     for path, dir, filenames in os.walk(custom_image_path):
         for filename in filenames:
-            img_path = os.path.join(path, filename)
-            image = Image.open(img_path)
-            resized_image = image.resize((final_width, final_height), Image.LANCZOS)
-            img = tf.expand_dims(np.array(resized_image), 0)
-            img = tf.image.convert_image_dtype(img, tf.float32)
-            image_data.append((img, None, None))
+            img_paths.append(os.path.join(path, filename))
         break
-    return image_data
+    return img_paths
 
-def get_dataset_shapes():
-    """Generating dataset parameter shapes for tensorflow datasets.
+def custom_data_generator(img_paths, final_height, final_width):
+    """Yielding custom entities as dataset.
+    inputs:
+        img_paths = custom image paths
+        final_height = final image height after resizing
+        final_width = final image width after resizing
     outputs:
-        shapes = output shapes for (images, ground truth boxes, ground truth landmarks)
+        img = (final_height, final_width, depth)
+        dummy_gt_boxes = (None, None)
+        dummy_gt_labels = (None, )
     """
-    return ([None, None, None], [None, None], [None, None, None])
+    for img_path in img_paths:
+        image = Image.open(img_path)
+        resized_image = image.resize((final_width, final_height), Image.LANCZOS)
+        img = np.array(resized_image)
+        img = tf.image.convert_image_dtype(img, tf.float32)
+        yield img, tf.constant([[]], dtype=tf.float32), tf.constant([], dtype=tf.int32)
 
-def get_dataset_types():
+def get_data_types():
     """Generating dataset parameter dtypes for tensorflow datasets.
     outputs:
         dtypes = output dtypes for (images, ground truth boxes, ground truth landmarks)
     """
     return (tf.float32, tf.float32, tf.float32)
 
-def get_batch_paddings():
+def get_data_shapes():
+    """Generating dataset parameter shapes for tensorflow datasets.
+    outputs:
+        shapes = output shapes for (images, ground truth boxes, ground truth landmarks)
+    """
+    return ([None, None, None], [None, None], [None, None, None])
+
+def get_padding_values():
     """Generating padding values for missing values in batch for tensorflow datasets.
     outputs:
         paddings = padding values with dtypes for (images, ground truth boxes, ground truth landmarks)

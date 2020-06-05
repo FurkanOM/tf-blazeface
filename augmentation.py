@@ -23,7 +23,7 @@ def apply(img, gt_boxes, gt_landmarks):
     # Randomly sample a patch and flip horizontally image and ground truth boxes
     geometric_methods = [patch, flip_horizontally]
     #
-    for augmentation_method in color_methods + geometric_methods:
+    for augmentation_method in geometric_methods + color_methods:
         img, gt_boxes, gt_landmarks = randomly_apply_operation(augmentation_method, img, gt_boxes, gt_landmarks)
     #
     return img, gt_boxes, gt_landmarks
@@ -50,7 +50,7 @@ def randomly_apply_operation(operation, img, gt_boxes, gt_landmarks, *args):
     return tf.cond(
         get_random_bool(),
         lambda: operation(img, gt_boxes, gt_landmarks, *args),
-        lambda: (img, gt_boxes, gt_landmarks, *args)
+        lambda: (img, gt_boxes, gt_landmarks)
     )
 
 def random_brightness(img, gt_boxes, gt_landmarks, max_delta=0.12):
@@ -129,81 +129,6 @@ def flip_horizontally(img, gt_boxes, gt_landmarks):
 ## Sample patch start
 ##############################################################################
 
-def get_valid_patch_randomly(patches, valid_cond, center_cond):
-    """Selecting one valid patch and center conditions of this patch randomly.
-    inputs:
-        patches = (number_of_valid_patches, [y1, x1, y2, x2])
-        valid_cond = (number_of_valid_patches, [ground_truth_object_count_bool])
-        center_cond = (number_of_valid_patches, [ground_truth_object_count_bool])
-    outputs:
-        random_patch = ([y1, x1, y2, x2])
-        center_cond_for_patch = ([ground_truth_object_count_bool])
-    """
-    valid_cond = tf.reduce_any(valid_cond, axis=-1)
-    valid_indices = tf.where(valid_cond)
-    random_index = tf.random.uniform((), minval=0, maxval=tf.shape(valid_indices)[0], dtype=tf.int32)
-    random_index = valid_indices[random_index, 0]
-    random_patch = patches[random_index]
-    center_cond_for_patch = center_cond[random_index]
-    return random_patch, center_cond_for_patch
-
-def select_and_apply_patch(img, gt_boxes, gt_landmarks, patches, valid_cond, center_cond):
-    """Selecting randomly one valid patch and adjusting image and ground truth objects to this patch.
-    inputs:
-        img = (height, width, depth)
-        gt_boxes = (ground_truth_object_count, [y1, x1, y2, x2])
-        gt_landmarks = (ground_truth_object_count, total_landmarks, [x, y])
-        patches = (number_of_valid_patches, [y1, x1, y2, x2])
-        valid_cond = (number_of_valid_patches, [ground_truth_object_count_bool])
-        center_cond = (number_of_valid_patches, [ground_truth_object_count_bool])
-    outputs:
-        modified_img = (final_height, final_width, depth)
-        modified_gt_boxes = (ground_truth_object_count, [y1, x1, y2, x2])
-        modified_gt_landmarks = (ground_truth_object_count, total_landmarks, [x, y])
-        height = final_height
-        width = final_width
-    """
-    random_patch, center_in_patch_condition = get_valid_patch_randomly(patches, valid_cond, center_cond)
-    #
-    height = random_patch[2] - random_patch[0]
-    width = random_patch[3] - random_patch[1]
-    gt_boxes = update_bboxes_for_patch(random_patch, gt_boxes)
-    gt_boxes = tf.where(tf.expand_dims(center_in_patch_condition, 1), gt_boxes, tf.zeros_like(gt_boxes))
-    gt_landmarks = update_landmarks_for_patch(random_patch, gt_landmarks)
-    random_patch = tf.cast(random_patch, tf.int32)
-    img = tf.image.crop_to_bounding_box(img, random_patch[0], random_patch[1], random_patch[2] - random_patch[0], random_patch[3] - random_patch[1])
-    return img, gt_boxes, gt_landmarks, height, width
-
-def get_centers_of_bboxes(bboxes):
-    """Calculating centers of the given boxes.
-    inputs:
-        bboxes = (total_bbox_count, [y1, x1, y2, x2])
-    outputs:
-        center_x = (total_bbox_count, center_x)
-        center_y = (total_bbox_count, center_y)
-    """
-    width = bboxes[..., 3] - bboxes[..., 1]
-    height = bboxes[..., 2] - bboxes[..., 0]
-    center_x = bboxes[..., 1] + width / 2
-    center_y = bboxes[..., 0] + height / 2
-    return center_x, center_y
-
-def get_center_in_patch_condition(patch, gt_boxes):
-    """Determine whether the center points of the given
-    ground truth objects are in the given patch.
-    inputs:
-        patch = ([y1, x1, y2, x2])
-        gt_boxes = (ground_truth_object_count, [y1, x1, y2, x2])
-    outputs:
-        center_in_patch = ([ground_truth_object_count_bool])
-    """
-    gt_center_x, gt_center_y = get_centers_of_bboxes(gt_boxes)
-    patch_y1, patch_x1, patch_y2, patch_x2 = tf.split(patch, 4, axis=-1)
-    center_x_in_patch = tf.logical_and(tf.greater(gt_center_x, patch_x1), tf.less(gt_center_x, patch_x2))
-    center_y_in_patch = tf.logical_and(tf.greater(gt_center_y, patch_y1), tf.less(gt_center_y, patch_y2))
-    center_in_patch = tf.logical_and(center_x_in_patch, center_y_in_patch)
-    return center_in_patch
-
 def get_random_min_overlap():
     """Generating random minimum overlap value.
     outputs:
@@ -213,83 +138,35 @@ def get_random_min_overlap():
     i = tf.random.uniform((), minval=0, maxval=tf.shape(overlaps)[0], dtype=tf.int32)
     return overlaps[i]
 
-def update_bboxes_for_patch(patch, gt_boxes):
-    """Updating the coordinates of ground truth objects according to the new patch.
-    inputs:
-        patch = ([y1, x1, y2, x2])
-        gt_boxes = (ground_truth_object_count, [y1, x1, y2, x2])
-    outputs:
-        modified_gt_boxes = (ground_truth_object_count, [y1, x1, y2, x2])
-    """
-    y1 = gt_boxes[..., 0] - patch[0]
-    x1 = gt_boxes[..., 1] - patch[1]
-    y2 = gt_boxes[..., 2] - patch[0]
-    x2 = gt_boxes[..., 3] - patch[1]
-    return tf.stack([y1, x1, y2, x2], -1)
-
-def update_landmarks_for_patch(patch, gt_landmarks):
-    """Updating the coordinates of ground truth landmarks according to the new patch.
-    inputs:
-        patch = ([y1, x1, y2, x2])
-        gt_landmarks = (ground_truth_object_count, total_landmarks, [x, y])
-    outputs:
-        modified_gt_landmarks = (ground_truth_object_count, total_landmarks, [x, y])
-    """
-    return gt_landmarks - [patch[1], patch[0]]
-
-def generate_random_patches(height, width):
-    """Generating approximately 100 valid patches according to the min and max aspect ratios.
-    inputs:
-        height = height of the image
-        width = width of the image
-    outputs:
-        patches = (number_of_valid_patches, [y1, x1, y2, x2])
-    """
-    min_aspect_ratio = tf.constant(0.5, dtype=tf.float32)
-    max_aspect_ratio = tf.constant(2.0, dtype=tf.float32)
-    coords = tf.random.uniform((1000, 4), minval=0., maxval=1., dtype=tf.float32)
-    coords = tf.round(coords * [height, width, height, width])
-    h = coords[..., 2] - coords[..., 0]
-    w = coords[..., 3] - coords[..., 1]
-    hw_ratio = h / w
-    pos_cond = tf.logical_and(tf.greater(h, 0.0), tf.greater(w, 0.0))
-    aspect_ratio_cond = tf.logical_and(tf.greater(hw_ratio, min_aspect_ratio), tf.less(hw_ratio, max_aspect_ratio))
-    valid_cond = tf.logical_and(pos_cond, aspect_ratio_cond)
-    return coords[valid_cond]
-
-def expand_image(img, denormalized_gt_boxes, denormalized_gt_landmarks, height, width):
+def expand_image(img, gt_boxes, gt_landmarks, height, width):
     """Randomly expanding image and adjusting ground truth object coordinates.
     inputs:
         img = (height, width, depth)
-        denormalized_gt_boxes = (ground_truth_object_count, [y1, x1, y2, x2])
-        denormalized_gt_landmarks = (ground_truth_object_count, total_landmarks, [x, y])
+        gt_boxes = (ground_truth_object_count, [y1, x1, y2, x2])
+        gt_landmarks = (ground_truth_object_count, total_landmarks, [x, y])
         height = height of the image
         width = width of the image
     outputs:
-        img = (final_height, final_width, depth)
-        modified_denormalized_gt_boxes = (ground_truth_object_count, [y1, x1, y2, x2])
-        modified_denormalized_gt_landmarks = (ground_truth_object_count, total_landmarks, [x, y])
-        final_height = final height of the image
-        final_width = final width of the image
+        modified_img = (final_height, final_width, depth)
+        modified_gt_boxes = (ground_truth_object_count, [y1, x1, y2, x2])
+        modified_gt_landmarks = (ground_truth_object_count, total_landmarks, [x, y])
     """
     expansion_ratio = tf.random.uniform((), minval=1, maxval=4, dtype=tf.float32)
     final_height, final_width = tf.round(height * expansion_ratio), tf.round(width * expansion_ratio)
-    random_left = tf.round(tf.random.uniform((), minval=0, maxval=final_width - width, dtype=tf.float32))
-    random_top = tf.round(tf.random.uniform((), minval=0, maxval=final_height - height, dtype=tf.float32))
-    expanded_image = tf.image.pad_to_bounding_box(
-        img,
-        tf.cast(random_top, tf.int32),
-        tf.cast(random_left, tf.int32),
-        tf.cast(final_height, tf.int32),
-        tf.cast(final_width, tf.int32),
-    )
-    y1 = denormalized_gt_boxes[..., 0] + random_top
-    x1 = denormalized_gt_boxes[..., 1] + random_left
-    y2 = denormalized_gt_boxes[..., 2] + random_top
-    x2 = denormalized_gt_boxes[..., 3] + random_left
-    denormalized_gt_boxes = tf.stack([y1, x1, y2, x2], axis=-1)
-    denormalized_gt_landmarks += [random_left, random_top]
-    return expanded_image, denormalized_gt_boxes, denormalized_gt_landmarks, final_height, final_width
+    pad_left = tf.round(tf.random.uniform((), minval=0, maxval=final_width - width, dtype=tf.float32))
+    pad_top = tf.round(tf.random.uniform((), minval=0, maxval=final_height - height, dtype=tf.float32))
+    pad_right = final_width - (width + pad_left)
+    pad_bottom = final_height - (height + pad_top)
+    #
+    mean, _ = tf.nn.moments(img, [0, 1])
+    expanded_image = tf.pad(img, ((pad_top, pad_bottom), (pad_left, pad_right), (0,0)), constant_values=-1)
+    expanded_image = tf.where(expanded_image == -1, mean, expanded_image)
+    #
+    min_max = tf.stack([-pad_top, -pad_left, pad_bottom+height, pad_right+width], -1) / [height, width, height, width]
+    modified_gt_boxes = bbox_utils.renormalize_bboxes_with_min_max(gt_boxes, min_max)
+    modified_gt_landmarks = landmark_utils.renormalize_landmarks_with_min_max(gt_landmarks, min_max)
+    #
+    return expanded_image, modified_gt_boxes, modified_gt_landmarks
 
 def patch(img, gt_boxes, gt_landmarks):
     """Generating random patch and adjusting image and ground truth objects to this patch.
@@ -308,33 +185,21 @@ def patch(img, gt_boxes, gt_landmarks):
         modified_gt_landmarks = (ground_truth_object_count, total_landmarks, [x, y])
             in normalized form [0, 1]
     """
-    img_shape = tf.shape(img)
-    height, width = tf.cast(img_shape[0], tf.float32), tf.cast(img_shape[1], tf.float32)
-    # Denormalizing bounding boxes for further operations
-    denormalized_gt_boxes = bbox_utils.denormalize_bboxes(gt_boxes, height, width)
-    # Denormalizing landmarks for further operations
-    denormalized_gt_landmarks = landmark_utils.denormalize_landmarks(gt_landmarks, height, width)
+    img_shape = tf.cast(tf.shape(img), dtype=tf.float32)
+    org_height, org_width = img_shape[0], img_shape[1]
     # Randomly expand image and adjust bounding boxes
-    img, denormalized_gt_boxes, denormalized_gt_landmarks, height, width = randomly_apply_operation(expand_image, img, denormalized_gt_boxes, denormalized_gt_landmarks, height, width)
-    # Generate random patches
-    patches = generate_random_patches(height, width)
-    # Calculate jaccard/iou value for each bounding box
-    iou_map = bbox_utils.generate_iou_map(patches, denormalized_gt_boxes, transpose_perm=[1, 0])
-    # Check each ground truth box center in the generated patch and return a boolean condition list
-    center_in_patch_condition = get_center_in_patch_condition(patches, denormalized_gt_boxes)
+    img, gt_boxes, gt_landmarks = randomly_apply_operation(expand_image, img, gt_boxes, gt_landmarks, org_height, org_width)
     # Get random minimum overlap value
     min_overlap = get_random_min_overlap()
-    # Check and merge center condition and minimum intersection condition
-    valid_patch_condition = tf.logical_and(center_in_patch_condition, tf.greater(iou_map, min_overlap))
-    # Check at least one valid patch then apply patch
-    img, denormalized_gt_boxes, denormalized_gt_landmarks, height, width = tf.cond(tf.reduce_any(valid_patch_condition),
-        lambda: select_and_apply_patch(img, denormalized_gt_boxes, denormalized_gt_landmarks, patches, valid_patch_condition, center_in_patch_condition),
-        lambda: (img, denormalized_gt_boxes, denormalized_gt_landmarks, height, width)
-    )
-    # Finally normalized ground truth boxes and landmarks
-    gt_boxes = bbox_utils.normalize_bboxes(denormalized_gt_boxes, height, width)
-    gt_boxes = tf.clip_by_value(gt_boxes, 0, 1)
     #
-    gt_landmarks = landmark_utils.normalize_landmarks(denormalized_gt_landmarks, height, width)
-    gt_landmarks = tf.clip_by_value(gt_landmarks, 0, 1)
+    begin, size, new_boundaries = tf.image.sample_distorted_bounding_box(
+        tf.shape(img),
+        bounding_boxes=tf.expand_dims(gt_boxes, 0),
+        min_object_covered=min_overlap)
+    #
+    img = tf.slice(img, begin, size)
+    img = tf.image.resize(img, (org_height, org_width))
+    gt_boxes = bbox_utils.renormalize_bboxes_with_min_max(gt_boxes, new_boundaries[0, 0])
+    gt_landmarks = landmark_utils.renormalize_landmarks_with_min_max(gt_landmarks, new_boundaries[0, 0])
+    #
     return img, gt_boxes, gt_landmarks

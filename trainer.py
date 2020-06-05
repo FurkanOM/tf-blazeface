@@ -25,21 +25,21 @@ val_files = files[train_ratio:]
 train_total_items = len(train_files)
 val_total_items = len(val_files)
 #
-dataset_types = data_utils.get_dataset_types()
-dataset_shapes = data_utils.get_dataset_shapes()
+data_types = data_utils.get_data_types()
+data_shapes = data_utils.get_data_shapes()
 train_data = tf.data.Dataset.from_generator(lambda: data_utils.dataset_generator(train_files),
-                                            dataset_types, dataset_shapes)
+                                            data_types, data_shapes)
 val_data = tf.data.Dataset.from_generator(lambda: data_utils.dataset_generator(val_files),
-                                          dataset_types, dataset_shapes)
+                                          data_types, data_shapes)
 #
 img_size = hyper_params["img_size"]
 
 train_data = train_data.map(lambda a,b,c : data_utils.preprocessing((a,b,c), img_size, img_size, augmentation.apply))
 val_data = val_data.map(lambda a,b,c : data_utils.preprocessing((a,b,c), img_size, img_size))
 #
-padding_values = data_utils.get_batch_paddings()
-train_data = train_data.padded_batch(batch_size, padded_shapes=dataset_shapes, padding_values=padding_values)
-val_data = val_data.padded_batch(batch_size, padded_shapes=dataset_shapes, padding_values=padding_values)
+padding_values = data_utils.get_padding_values()
+train_data = train_data.padded_batch(batch_size, padded_shapes=data_shapes, padding_values=padding_values)
+val_data = val_data.padded_batch(batch_size, padded_shapes=data_shapes, padding_values=padding_values)
 #
 model = blazeface.get_model(hyper_params)
 custom_losses = CustomLoss(hyper_params["neg_pos_ratio"], hyper_params["loc_loss_alpha"])
