@@ -149,7 +149,6 @@ def preprocessing(image_data, final_height, final_width, augmentation_fn=None):
     img = tf.image.resize(img, (final_height, final_width))
     if augmentation_fn:
         img, gt_boxes, gt_landmarks = augmentation_fn(img, gt_boxes, gt_landmarks)
-        img = tf.image.resize(img, (final_height, final_width))
     return img, gt_boxes, gt_landmarks
 
 def get_dataset(name, split, data_dir="~/tensorflow_datasets"):
