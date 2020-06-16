@@ -36,8 +36,8 @@ model.load_weights(model_path)
 prior_boxes = bbox_utils.generate_prior_boxes(hyper_params["feature_map_shapes"], hyper_params["aspect_ratios"])
 
 variances = hyper_params["variances"]
-landmark_pair_count = hyper_params["landmark_pair_count"]
-landmark_variances = landmark_pair_count * variances[0:2]
+total_landmarks = hyper_params["total_landmarks"]
+landmark_variances = total_landmarks * variances[0:2]
 variances += landmark_variances
 
 for image_data in test_data:
@@ -56,6 +56,6 @@ for image_data in test_data:
     weighted_landmarks = weighted_suppressed_data[..., 4:]
     #
     denormalized_bboxes = bbox_utils.denormalize_bboxes(weighted_bboxes, img_size, img_size)
-    weighted_landmarks = tf.reshape(weighted_landmarks, (1, -1, landmark_pair_count, 2))
+    weighted_landmarks = tf.reshape(weighted_landmarks, (1, -1, total_landmarks, 2))
     denormalized_landmarks = landmark_utils.denormalize_landmarks(weighted_landmarks, img_size, img_size)
     drawing_utils.draw_bboxes_with_landmarks(img[0], denormalized_bboxes, denormalized_landmarks)

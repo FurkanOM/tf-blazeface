@@ -15,7 +15,7 @@ def get_hyper_params(**kwargs):
         "feature_map_shapes": [16, 8, 8, 8],
         "aspect_ratios": [[1.], [1.], [1.], [1.]],
         "detections_per_layer": [2, 6],
-        "landmark_pair_count": 6,
+        "total_landmarks": 6,
         "iou_threshold": 0.5,
         "neg_pos_ratio": 3,
         "loc_loss_alpha": 1,
@@ -89,8 +89,8 @@ def calculate_actual_outputs(prior_boxes, gt_boxes, gt_landmarks, hyper_params):
     batch_size = tf.shape(gt_boxes)[0]
     iou_threshold = hyper_params["iou_threshold"]
     variances = hyper_params["variances"]
-    landmark_pair_count = hyper_params["landmark_pair_count"]
-    landmark_variances = landmark_pair_count * variances[0:2]
+    total_landmarks = hyper_params["total_landmarks"]
+    landmark_variances = total_landmarks * variances[0:2]
     # Calculate iou values between each bboxes and ground truth boxes
     iou_map = bbox_utils.generate_iou_map(bbox_utils.convert_xywh_to_bboxes(prior_boxes), gt_boxes)
     # Get max index value for each row
@@ -100,7 +100,7 @@ def calculate_actual_outputs(prior_boxes, gt_boxes, gt_landmarks, hyper_params):
     #
     pos_cond = tf.greater(merged_iou_map, iou_threshold)
     #
-    gt_landmarks = tf.reshape(gt_landmarks, (batch_size, -1, landmark_pair_count * 2))
+    gt_landmarks = tf.reshape(gt_landmarks, (batch_size, -1, total_landmarks * 2))
     gt_boxes_and_landmarks = tf.concat([gt_boxes, gt_landmarks], -1)
     gt_boxes_and_landmarks_map = tf.gather(gt_boxes_and_landmarks, max_indices_each_gt_box, batch_dims=1)
     expanded_gt_boxes_and_landmarks = tf.where(tf.expand_dims(pos_cond, -1), gt_boxes_and_landmarks_map, tf.zeros_like(gt_boxes_and_landmarks_map))

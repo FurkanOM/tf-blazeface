@@ -67,7 +67,7 @@ def double_blaze_block(input, filters, stride=1):
 def get_model(hyper_params):
     detections_per_layer = hyper_params["detections_per_layer"]
     img_size = hyper_params["img_size"]
-    total_reg_points = hyper_params["landmark_pair_count"] * 2 + 4
+    total_reg_points = hyper_params["total_landmarks"] * 2 + 4
     #
     input = Input(shape=(None, None, 3))
     # First conv layer
