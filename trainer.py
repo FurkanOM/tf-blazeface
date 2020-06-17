@@ -11,34 +11,26 @@ args = io_utils.handle_args()
 if args.handle_gpu:
     io_utils.handle_gpu_compatibility()
 
-batch_size = 64
-epochs = 250
+batch_size = 32
+epochs = 150
 load_weights = False
 hyper_params = train_utils.get_hyper_params()
 
-files = data_utils.get_files_from_folder("data/modified")
-random.shuffle(files)
-#
-train_ratio = int(len(files) * 0.9)
-train_files = files[:train_ratio]
-val_files = files[train_ratio:]
-train_total_items = len(train_files)
-val_total_items = len(val_files)
-#
-data_types = data_utils.get_data_types()
-data_shapes = data_utils.get_data_shapes()
-train_data = tf.data.Dataset.from_generator(lambda: data_utils.dataset_generator(train_files),
-                                            data_types, data_shapes)
-val_data = tf.data.Dataset.from_generator(lambda: data_utils.dataset_generator(val_files),
-                                          data_types, data_shapes)
+train_split = "train[:80%]"
+val_split = "train[80%:]"
+train_data, info = data_utils.get_dataset("the300w_lp", train_split)
+val_data, _ = data_utils.get_dataset("the300w_lp", val_split)
+train_total_items = data_utils.get_total_item_size(info, train_split)
+val_total_items = data_utils.get_total_item_size(info, val_split)
 #
 img_size = hyper_params["img_size"]
 
-train_data = train_data.map(lambda a,b,c : data_utils.preprocessing((a,b,c), img_size, img_size, augmentation.apply))
-val_data = val_data.map(lambda a,b,c : data_utils.preprocessing((a,b,c), img_size, img_size))
+train_data = train_data.map(lambda x : data_utils.preprocessing(x, img_size, img_size, augmentation.apply))
+val_data = val_data.map(lambda x : data_utils.preprocessing(x, img_size, img_size))
 #
+data_shapes = data_utils.get_data_shapes()
 padding_values = data_utils.get_padding_values()
-train_data = train_data.padded_batch(batch_size, padded_shapes=data_shapes, padding_values=padding_values)
+train_data = train_data.shuffle(batch_size*12).padded_batch(batch_size, padded_shapes=data_shapes, padding_values=padding_values)
 val_data = val_data.padded_batch(batch_size, padded_shapes=data_shapes, padding_values=padding_values)
 #
 model = blazeface.get_model(hyper_params)

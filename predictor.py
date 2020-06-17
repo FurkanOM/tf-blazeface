@@ -7,7 +7,7 @@ if args.handle_gpu:
     io_utils.handle_gpu_compatibility()
 
 batch_size = 1
-use_custom_images = True
+use_custom_images = False
 custom_image_path = "data/images/"
 hyper_params = train_utils.get_hyper_params()
 img_size = hyper_params["img_size"]
@@ -22,10 +22,9 @@ if use_custom_images:
     test_data = tf.data.Dataset.from_generator(lambda: data_utils.custom_data_generator(
                                                img_paths, img_size, img_size), data_types, data_shapes)
 else:
-    files = data_utils.get_files_from_folder("data/modified")
-    test_data = tf.data.Dataset.from_generator(lambda: data_utils.dataset_generator(files),
-                                                data_types, data_shapes)
-    test_data = test_data.map(lambda a,b,c : data_utils.preprocessing((a,b,c), img_size, img_size))
+    test_data, info = data_utils.get_dataset("the300w_lp", "train[80%:]")
+    total_items = data_utils.get_total_item_size(info, test_split)
+    test_data = test_data.map(lambda x: data_utils.preprocessing(x, img_size, img_size))
 #
 test_data = test_data.padded_batch(batch_size, padded_shapes=data_shapes, padding_values=padding_values)
 
@@ -56,6 +55,6 @@ for image_data in test_data:
     weighted_landmarks = weighted_suppressed_data[..., 4:]
     #
     denormalized_bboxes = bbox_utils.denormalize_bboxes(weighted_bboxes, img_size, img_size)
-    weighted_landmarks = tf.reshape(weighted_landmarks, (1, -1, total_landmarks, 2))
+    weighted_landmarks = tf.reshape(weighted_landmarks, (-1, total_landmarks, 2))
     denormalized_landmarks = landmark_utils.denormalize_landmarks(weighted_landmarks, img_size, img_size)
     drawing_utils.draw_bboxes_with_landmarks(img[0], denormalized_bboxes, denormalized_landmarks)

@@ -1,6 +1,6 @@
 import tensorflow as tf
 import math
-from . import bbox_utils
+from utils import bbox_utils
 
 def get_hyper_params(**kwargs):
     """Generating hyper params in a dynamic way.
@@ -35,9 +35,9 @@ def scheduler(epoch):
     outputs:
         learning_rate = float learning rate value
     """
-    if epoch < 150:
+    if epoch < 100:
         return 1e-3
-    elif epoch < 200:
+    elif epoch < 125:
         return 1e-4
     else:
         return 1e-5

@@ -20,8 +20,8 @@ def apply(img, gt_boxes, gt_landmarks):
     # Randomly change hue, saturation, brightness and contrast of image
     color_methods = [random_brightness, random_contrast, random_hue, random_saturation]
     # Geometric operations
-    # Randomly sample a patch and flip horizontally image and ground truth boxes
-    geometric_methods = [patch, flip_horizontally]
+    # Randomly sample a patch image and ground truth boxes
+    geometric_methods = [patch]
     #
     for augmentation_method in geometric_methods + color_methods:
         img, gt_boxes, gt_landmarks = randomly_apply_operation(augmentation_method, img, gt_boxes, gt_landmarks)
@@ -104,26 +104,6 @@ def random_saturation(img, gt_boxes, gt_landmarks, lower=0.5, upper=1.5):
         gt_landmarks = (ground_truth_object_count, total_landmarks, [x, y])
     """
     return tf.image.random_saturation(img, lower, upper), gt_boxes, gt_landmarks
-
-def flip_horizontally(img, gt_boxes, gt_landmarks):
-    """Flip image horizontally and adjust the ground truth boxes.
-    inputs:
-        img = (height, width, depth)
-        gt_boxes = (ground_truth_object_count, [y1, x1, y2, x2])
-        gt_landmarks = (ground_truth_object_count, total_landmarks, [x, y])
-    outputs:
-        modified_img = (height, width, depth)
-        modified_gt_boxes = (ground_truth_object_count, [y1, x1, y2, x2])
-        modified_gt_landmarks = (ground_truth_object_count, total_landmarks, [x, y])
-    """
-    flipped_img = tf.image.flip_left_right(img)
-    flipped_gt_boxes = tf.stack([gt_boxes[..., 0],
-                                1.0 - gt_boxes[..., 3],
-                                gt_boxes[..., 2],
-                                1.0 - gt_boxes[..., 1]], -1)
-    flipped_gt_landmarks = tf.stack([1.0 - gt_landmarks[..., 0],
-                                    gt_landmarks[..., 1]], -1)
-    return flipped_img, flipped_gt_boxes, flipped_gt_landmarks
 
 ##############################################################################
 ## Sample patch start
