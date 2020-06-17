@@ -20,8 +20,8 @@ def draw_bboxes_with_landmarks(img, bboxes, landmarks):
     """Drawing bounding boxes and landmarks on given image.
     inputs:
         img = (height, width, channels)
-        bboxes = (M x N, [y1, x1, y2, x2])
-        landmarks = (M x N, [x, y])
+        bboxes = (total_bboxes, [y1, x1, y2, x2])
+        landmarks = (total_bboxes, total_landmarks, [x, y])
     """
     image = tf.keras.preprocessing.image.array_to_img(img)
     width, height = image.size

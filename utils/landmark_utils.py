@@ -15,12 +15,12 @@ def renormalize_landmarks_with_min_max(landmarks, min_max):
 def normalize_landmarks(landmarks, height, width):
     """Normalizing landmarks.
     inputs:
-        landmarks = (M x N, [x, y])
+        landmarks = (M, N, [x, y])
         height = image height
         width = image width
 
     outputs:
-        normalized_landmarks = (M x N, [x, y])
+        normalized_landmarks = (M, N, [x, y])
             in normalized form [0, 1]
     """
     return landmarks / tf.cast([width, height], tf.float32)
@@ -28,12 +28,12 @@ def normalize_landmarks(landmarks, height, width):
 def denormalize_landmarks(landmarks, height, width):
     """Denormalizing landmarks.
     inputs:
-        landmarks = (M x N, [x, y])
+        landmarks = (M, N, [x, y])
             in normalized form [0, 1]
         height = image height
         width = image width
 
     outputs:
-        denormalized_landmarks = (M x N, [x, y])
+        denormalized_landmarks = (M, N, [x, y])
     """
     return tf.round(landmarks * tf.cast([width, height], tf.float32))

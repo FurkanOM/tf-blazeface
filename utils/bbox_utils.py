@@ -249,28 +249,13 @@ def generate_prior_boxes(feature_map_shapes, aspect_ratios):
     prior_boxes = tf.concat(prior_boxes, axis=0)
     return tf.clip_by_value(prior_boxes, 0, 1)
 
-def convert_bboxes_to_xywh(bboxes):
-    """Converting bounding boxes to center x, y and width height format.
-    inputs:
-        bboxes = (M x N, [y1, x1, y2, x2])
-
-    outputs:
-        xywh = (M x N, [center_x, center_y, width, height])
-    """
-    width = bboxes[..., 3] - bboxes[..., 1]
-    height = bboxes[..., 2] - bboxes[..., 0]
-    center_x = bboxes[..., 1] + 0.5 * width
-    center_y = bboxes[..., 0] + 0.5 * height
-    xywh = tf.stack([center_x, center_y, width, height], axis=-1)
-    return tf.clip_by_value(xywh, 0, 1)
-
 def convert_xywh_to_bboxes(xywh):
     """Converting center x, y and width height format to bounding boxes.
     inputs:
-        xywh = (M x N, [center_x, center_y, width, height])
+        xywh = (M, N, [center_x, center_y, width, height])
 
     outputs:
-        bboxes = (M x N, [y1, x1, y2, x2])
+        bboxes = (M, N, [y1, x1, y2, x2])
     """
     y1 = xywh[..., 1] - (0.5 * xywh[..., 3])
     x1 = xywh[..., 0] - (0.5 * xywh[..., 2])
@@ -294,12 +279,12 @@ def renormalize_bboxes_with_min_max(bboxes, min_max):
 def normalize_bboxes(bboxes, height, width):
     """Normalizing bounding boxes.
     inputs:
-        bboxes = (M x N, [y1, x1, y2, x2])
+        bboxes = (M, N, [y1, x1, y2, x2])
         height = image height
         width = image width
 
     outputs:
-        normalized_bboxes = (M x N, [y1, x1, y2, x2])
+        normalized_bboxes = (M, N, [y1, x1, y2, x2])
             in normalized form [0, 1]
     """
     y1 = bboxes[..., 0] / height
@@ -311,13 +296,13 @@ def normalize_bboxes(bboxes, height, width):
 def denormalize_bboxes(bboxes, height, width):
     """Denormalizing bounding boxes.
     inputs:
-        bboxes = (M x N, [y1, x1, y2, x2])
+        bboxes = (M, N, [y1, x1, y2, x2])
             in normalized form [0, 1]
         height = image height
         width = image width
 
     outputs:
-        denormalized_bboxes = (M x N, [y1, x1, y2, x2])
+        denormalized_bboxes = (M, N, [y1, x1, y2, x2])
     """
     y1 = bboxes[..., 0] * height
     x1 = bboxes[..., 1] * width

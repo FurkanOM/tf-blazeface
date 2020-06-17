@@ -8,10 +8,10 @@ import numpy as np
 def filter_landmarks(landmarks):
     """Filtering landmark from 68 points to 6 points for blazeface.
     inputs:
-        landmarks = (M x N, [x, y])
+        landmarks = (M, 68, [x, y])
 
     outputs:
-        filtered_landmarks = (M x 6, [x, y])
+        filtered_landmarks = (M, 6, [x, y])
     """
     # Right eye
     right_eye_coords = tf.reduce_mean(landmarks[..., 36:42, :], -2)
@@ -37,7 +37,7 @@ def filter_landmarks(landmarks):
 def generate_bboxes_from_landmarks(landmarks):
     """Generating bounding boxes from landmarks.
     inputs:
-        landmarks = (M x N, [x, y])
+        landmarks = (M, total_landmarks, [x, y])
 
     outputs:
         bboxes = (M, [y1, x1, y2, x2])
@@ -61,7 +61,7 @@ def preprocessing(image_data, final_height, final_width, augmentation_fn=None):
     outputs:
         img = (final_height, final_width, channels)
         gt_boxes = (gt_box_size, [y1, x1, y2, x2])
-        gt_landmarks = (gt_box_size, 6, [x, y])
+        gt_landmarks = (gt_box_size, total_landmarks, [x, y])
     """
     img = image_data["image"]
     img = tf.image.convert_image_dtype(img, tf.float32)
@@ -76,8 +76,8 @@ def preprocessing(image_data, final_height, final_width, augmentation_fn=None):
 def get_dataset(name, split, data_dir="~/tensorflow_datasets"):
     """Get tensorflow dataset split and info.
     inputs:
-        name = name of the dataset, voc/2007, voc/2012, etc.
-        split = data split string, should be one of ["train", "validation", "test"]
+        name = name of the dataset, the300w_lp, etc.
+        split = data split string
         data_dir = read/write path for tensorflow datasets
 
     outputs:
@@ -91,7 +91,7 @@ def get_total_item_size(info, split):
     """Get total item size for given split.
     inputs:
         info = tensorflow dataset info
-        split = data split string, should be one of ["train", "validation", "test"]
+        split = data split string
 
     outputs:
         total_item_size = number of total items

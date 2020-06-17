@@ -22,7 +22,8 @@ if use_custom_images:
     test_data = tf.data.Dataset.from_generator(lambda: data_utils.custom_data_generator(
                                                img_paths, img_size, img_size), data_types, data_shapes)
 else:
-    test_data, info = data_utils.get_dataset("the300w_lp", "train[80%:]")
+    test_split = "train[80%:]"
+    test_data, info = data_utils.get_dataset("the300w_lp", test_split)
     total_items = data_utils.get_total_item_size(info, test_split)
     test_data = test_data.map(lambda x: data_utils.preprocessing(x, img_size, img_size))
 #
