@@ -13,23 +13,23 @@ def filter_landmarks(landmarks):
     outputs:
         filtered_landmarks = (M, 6, [x, y])
     """
-    # Right eye
-    right_eye_coords = tf.reduce_mean(landmarks[..., 36:42, :], -2)
     # Left eye
-    left_eye_coords = tf.reduce_mean(landmarks[..., 42:48, :], -2)
-    # Right ear
-    right_ear_coords = tf.reduce_mean(landmarks[..., 0:2, :], -2)
+    left_eye_coords = tf.reduce_mean(landmarks[..., 36:42, :], -2)
+    # Right eye
+    right_eye_coords = tf.reduce_mean(landmarks[..., 42:48, :], -2)
     # Left ear
-    left_ear_coords = tf.reduce_mean(landmarks[..., 15:17, :], -2)
+    left_ear_coords = tf.reduce_mean(landmarks[..., 0:2, :], -2)
+    # Right ear
+    right_ear_coords = tf.reduce_mean(landmarks[..., 15:17, :], -2)
     # Nose
     nose_coords = tf.reduce_mean(landmarks[..., 27:36, :], -2)
     # Mouth
     mouth_coords = tf.reduce_mean(landmarks[..., 48:68, :], -2)
     return tf.stack([
-        right_eye_coords,
         left_eye_coords,
-        right_ear_coords,
+        right_eye_coords,
         left_ear_coords,
+        right_ear_coords,
         nose_coords,
         mouth_coords,
     ], -2)
@@ -71,6 +71,7 @@ def preprocessing(image_data, final_height, final_width, augmentation_fn=None):
     img = tf.image.resize(img, (final_height, final_width))
     if augmentation_fn:
         img, gt_boxes, gt_landmarks = augmentation_fn(img, gt_boxes, gt_landmarks)
+    img = (img - 0.5) / 0.5
     return img, gt_boxes, gt_landmarks
 
 def get_dataset(name, split, data_dir="~/tensorflow_datasets"):

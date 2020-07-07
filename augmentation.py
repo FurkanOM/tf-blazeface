@@ -26,6 +26,7 @@ def apply(img, gt_boxes, gt_landmarks):
     for augmentation_method in geometric_methods + color_methods:
         img, gt_boxes, gt_landmarks = randomly_apply_operation(augmentation_method, img, gt_boxes, gt_landmarks)
     #
+    img = tf.clip_by_value(img, 0., 1.)
     return img, gt_boxes, gt_landmarks
 
 def get_random_bool():
