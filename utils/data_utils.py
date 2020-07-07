@@ -139,6 +139,7 @@ def custom_data_generator(img_paths, final_height, final_width):
         resized_image = image.resize((final_width, final_height), Image.LANCZOS)
         img = np.array(resized_image)
         img = tf.image.convert_image_dtype(img, tf.float32)
+        img = (img - 0.5) / 0.5
         yield img, tf.constant([[]], dtype=tf.float32), tf.constant([[[]]], dtype=tf.float32)
 
 def get_data_types():
